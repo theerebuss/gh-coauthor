@@ -1,10 +1,13 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 
+	"github.com/charmbracelet/huh"
+	"github.com/cli/go-gh"
 	"github.com/cli/go-gh/v2/pkg/api"
 	"github.com/go-git/go-git/v6"
 	"github.com/spf13/cobra"
@@ -22,30 +25,84 @@ gh coauthor johndoe`,
 			return
 		}
 
-		if len(args) == 0 {
-			fmt.Println("Missing implementation.")
-			return
-		}
-
 		var authorInfo string
-		if len(args) == 1 {
-			ai, err := getAuthorInfo(args[0])
-			if err != nil {
-				fmt.Println("Error getting author info:", err)
-				return
-			}
-			authorInfo = ai
+
+		if len(args) == 0 {
+			login := getCollaboratorFromUser()
+			authorInfo = getAuthorInfo(login)
+		} else {
+			authorInfo = getAuthorInfo(args[0])
 		}
 
 		addCoauthorToLastCommit(authorInfo)
 	},
 }
 
-func getAuthorInfo(username string) (string, error) {
-	client, err := api.DefaultRESTClient()
+type Collaborator struct {
+	ID    string `json:"id"`
+	Login string `json:"login"`
+	Name  string `json:"name"`
+}
+
+func getCollaborators() ([]Collaborator, error) {
+	output, _, err := gh.Exec("repo", "view", "--json", "mentionableUsers", "--jq", ".mentionableUsers")
+	if err != nil {
+		return nil, fmt.Errorf("error getting collaborators: %w", err)
+	}
+
+	var collaborators []Collaborator
+	err = json.Unmarshal(output.Bytes(), &collaborators)
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshalling collaborators: %w", err)
+	}
+
+	return collaborators, nil
+}
+
+func promptForCollaborator(collaborators []Collaborator) Collaborator {
+	var collaborator Collaborator
+	options := make([]huh.Option[Collaborator], len(collaborators))
+	for i, c := range collaborators {
+		label := c.Login
+		if c.Name != "" {
+			label = fmt.Sprintf("%s (%s)", c.Name, c.Login)
+		}
+		options[i] = huh.NewOption(label, c)
+	}
+
+	selection := huh.NewSelect[Collaborator]().
+		Title("Choose the co-author").
+		Options(options...).Value(&collaborator)
+
+	form := huh.NewForm(huh.NewGroup(selection))
+	err := form.Run()
 	if err != nil {
 		log.Fatal(err)
-		return "", fmt.Errorf("failed to create API client: %w", err)
+	}
+
+	return collaborator
+}
+
+func getCollaboratorFromUser() string {
+	collaborators, err := getCollaborators()
+	if err != nil {
+		fmt.Println("Error getting collaborators:", err)
+		return ""
+	}
+
+	collaborator := promptForCollaborator(collaborators)
+	if collaborator.Login == "" {
+		fmt.Println("No collaborator selected.")
+		return ""
+	}
+
+	return collaborator.Login
+}
+
+func getAuthorInfo(username string) string {
+	client, err := api.DefaultRESTClient()
+	if err != nil {
+		log.Fatalf("failed to create API client: %w", err)
 	}
 
 	res := struct {
@@ -56,8 +113,7 @@ func getAuthorInfo(username string) (string, error) {
 	}{}
 	err = client.Get("users/"+username, &res)
 	if err != nil {
-		log.Fatal(err)
-		return "", fmt.Errorf("failed to get user info: %w", err)
+		log.Fatalf("failed to get user info: %w", err)
 	}
 
 	var name string
@@ -74,7 +130,7 @@ func getAuthorInfo(username string) (string, error) {
 		email = res.Email
 	}
 
-	return fmt.Sprintf("%s <%s>", name, email), nil
+	return fmt.Sprintf("%s <%s>", name, email)
 }
 
 func addCoauthorToLastCommit(authorInfo string) {
