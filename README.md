@@ -27,10 +27,18 @@ Flags:
 
 ## Examples
 
-```shell
-# Interactive
-gh coauthor
+### Specific co-author
 
-# Specify a username
-gh coauthor johndoe
+```shell
+gh coauthor ashtom
 ```
+
+![example of using the coauthor extension with a specific username. when passed a username, we see that the commit message has been edited to include the user's name, email and the "Co-authored-by" tag.](./assets/specific.gif)
+
+### Interactive selection
+
+```shell
+gh coauthor
+```
+
+![example of using the coauthor extension in interactive mode. when passing no username, a list of the repository's collaborators is shown and the user interactively selects a random collaborator. we then see that the commit message has been edited to include the user's name, email and the "Co-authored-by" tag.](./assets/interactive.gif)
