@@ -4,16 +4,12 @@ A GitHub CLI extension for adding co-authors to your commits.
 
 Interactively shows repository authors to choose from if no argument is provided.
 
-## Development
-
-```shell
-go build && gh coauthor
-```
+![example of using the coauthor extension in interactive mode. when passing no username, a list of the repository's collaborators is shown and the user interactively selects a random collaborator. we then see that the commit message has been edited to include the user's name, email and the "Co-authored-by" tag.](./assets/interactive.gif)
 
 ## Installation
 
 ```shell
-gh extension install .; gh coauthor
+gh extension install theerebuss/gh-coauthor
 ```
 
 ## Usage
@@ -42,3 +38,9 @@ gh coauthor
 ```
 
 ![example of using the coauthor extension in interactive mode. when passing no username, a list of the repository's collaborators is shown and the user interactively selects a random collaborator. we then see that the commit message has been edited to include the user's name, email and the "Co-authored-by" tag.](./assets/interactive.gif)
+
+## Development
+
+```shell
+go build && gh coauthor
+```
